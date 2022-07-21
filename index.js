@@ -66,6 +66,32 @@ async function run() {
             res.send({ result })
 
         })
+        //PUT USER
+        app.get('/allUser', async (req, res) => {
+            const users = await usersCollection.find().toArray()
+            res.send(users)
+
+        })
+        //Patch USER
+        app.patch('/userSingle/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            // console.log(email, '  ', user);
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    message: user.message,
+                    name: user.userName,
+                    photoURL: user.photoURL,
+                    time: user.time
+                }
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+
+            res.send({ result })
+
+        })
 
         //Post messages
         //http://localhost:5000/messages
@@ -81,6 +107,20 @@ async function run() {
             const messages = await messagesCollection.find().toArray()
             res.send(messages)
         })
+
+
+        //http://localhost:5000/messages
+        // app.get('/messageDist', async (req, res) => {
+        //     // const messages = await messagesCollection.distinct('userName')
+        //     const messages = await messagesCollectionaggregate([
+        //         { $match: { email: "A" } },
+        //         { $group: { _id: "$cust_id", total: { $sum: "$amount" } } },
+        //         { $sort: { total: -1 } }
+        //     ])
+        //     res.send(messages)
+        // })
+
+
 
 
         app.delete('/message/:id', async (req, res) => {
