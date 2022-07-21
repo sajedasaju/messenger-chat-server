@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 5000
@@ -21,7 +21,25 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jyuvh.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    console.log("AUTH", authHeader)
+    if (!authHeader) {
+        return res.status(401).send({ message: 'Unauthorized access' })
+    }
+    const token = authHeader.split(' ')[1];
+    // console.log("Token holo", token)
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden access' })
 
+        }
+        req.decoded = decoded
+        console.log(req.decoded)
+        next();
+    });
+
+}
 
 
 async function run() {
@@ -30,6 +48,8 @@ async function run() {
         //ALL COLLECTION
         //1 ) uer collection
         const usersCollection = client.db("messenger-chat").collection('users');
+        //1 ) uer collection
+        const messagesCollection = client.db("messenger-chat").collection('messages');
 
 
         //PUT USER
@@ -46,6 +66,49 @@ async function run() {
             res.send({ result })
 
         })
+
+        //Post messages
+        //http://localhost:5000/messages
+        app.post('/message', async (req, res) => {
+            const message = req.body;
+            console.log(message)
+            const result = await messagesCollection.insertOne(message);
+            res.send(result);
+        })
+        //Post messages
+        //http://localhost:5000/messages
+        app.get('/message', async (req, res) => {
+            const messages = await messagesCollection.find().toArray()
+            res.send(messages)
+        })
+
+
+        app.delete('/message/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id)
+            const query = { _id: ObjectId(id) };
+            const result = await messagesCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        app.patch('/message/:id', async (req, res) => {
+            const id = req.params.id;
+            const order = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    message: order.message,
+                    removed: order.removed
+                }
+            };
+            const result = await messagesCollection.updateOne(filter, updateDoc, options);
+
+            res.send(result)
+
+        })
+
+
 
 
 
